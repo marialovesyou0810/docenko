@@ -1,0 +1,127 @@
+import json
+from datetime import datetime
+
+class Task:
+    def __init__(self, title, deadline, priority, completed=False):
+        self.title = title
+        self.deadline = datetime.strptime(deadline, "%Y-%m-%d")
+        self.priority = int(priority)
+        self.completed = completed
+
+    def calculate_priority(self):
+        days_until_deadline = (self.deadline - datetime.now()).days
+        if days_until_deadline <= 7:
+            return self.priority / max(days_until_deadline, 1)
+        else:
+            return self.priority
+
+    def to_dict(self):
+        return {
+            "title": self.title,
+            "deadline": self.deadline.strftime("%Y-%m-%d"),
+            "priority": self.priority,
+            "completed": self.completed
+        }
+
+class TaskManager:
+    def __init__(self):
+        self.tasks = []
+        self.completed_tasks = []
+        self.load_tasks()
+
+    def add_task(self, title, deadline, priority):
+        task = Task(title, deadline, priority)
+        self.tasks.append(task)
+        self.tasks.sort(key=lambda x: x.calculate_priority(), reverse=True)
+        self.save_tasks()
+        print("Отлично! Задача успешно добавлена.")
+
+    def show_tasks(self):
+        if not self.tasks:
+            print("Список задач пуст. Вы можете добавить новые задачи.")
+            return
+        print("Список задач:")
+        for i, task in enumerate(self.tasks, 1):
+            status = "Выполнена" if task.completed else "Не выполнена"
+            print(f"{i}. Название: {task.title}, Срок выполнения: {task.deadline.strftime('%Y-%m-%d')}, Приоритет: {task.priority}, Статус: {status}")
+        print("Не забывайте о своих задачах! Двигайтесь к цели шаг за шагом.")
+
+    def show_completed_tasks(self):
+        if not self.completed_tasks:
+            print("Список выполненных задач пуст.")
+            return
+        print("Список выполненных задач:")
+        for i, task in enumerate(self.completed_tasks, 1):
+            print(f"{i}. Название: {task.title}, Срок выполнения: {task.deadline.strftime('%Y-%m-%d')}, Приоритет: {task.priority}")
+
+    def mark_task_as_completed(self, task_number):
+        if 1 <= task_number <= len(self.tasks):
+            task = self.tasks.pop(task_number - 1)
+            task.completed = True
+            self.completed_tasks.append(task)
+            self.save_tasks()
+            print("Отличная работа! Задача отмечена как выполненная.")
+        else:
+            print("Некорректный номер задачи. Попробуйте снова.")
+
+    def load_tasks(self):
+        try:
+            with open("tasks.json", "r") as file:
+                data = json.load(file)
+                for task_data in data.get("tasks", []):
+                    task = Task(**task_data)
+                    self.tasks.append(task)
+                for task_data in data.get("completed_tasks", []):
+                    task = Task(**task_data)
+                    task.completed = True
+                    self.completed_tasks.append(task)
+        except FileNotFoundError:
+            pass
+
+    def save_tasks(self):
+        data = {
+            "tasks": [task.to_dict() for task in self.tasks],
+            "completed_tasks": [task.to_dict() for task in self.completed_tasks]
+        }
+        with open("tasks.json", "w") as file:
+            json.dump(data, file, indent=4)
+
+def main():
+    task_manager = TaskManager()
+    print("Привет! Добро пожаловать в программу управления задачами.")
+    while True:
+        print("\nМеню:")
+        print("1. Добавить задачу")
+        print("2. Показать список задач")
+        print("3. Показать список выполненных задач")
+        print("4. Отметить задачу как выполненную")
+        print("5. Выйти из программы")
+
+        choice = input("Выберите опцию (введите номер): ")
+
+        if choice == "1":
+            title = input("Введите название задачи: ")
+            deadline = input("Введите срок выполнения задачи (гггг-мм-дд): ")
+            priority = input("Введите приоритет задачи (число от 1 до 10): ")
+            task_manager.add_task(title, deadline, priority)
+
+        elif choice == "2":
+            task_manager.show_tasks()
+
+        elif choice == "3":
+            task_manager.show_completed_tasks()
+
+        elif choice == "4":
+            task_manager.show_tasks()
+            task_number = int(input("Введите номер задачи для отметки как выполненной: "))
+            task_manager.mark_task_as_completed(task_number)
+
+        elif choice == "5":
+            print("Спасибо за использование программы управления задачами. Удачного дня!")
+            break
+
+        else:
+            print("Некорректный ввод. Пожалуйста, выберите опцию из предложенного списка.")
+
+if __name__ == "__main__":
+    main()
